@@ -2,17 +2,16 @@ package com.framework.controller;
 
 import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
+import com.framework.modelview.ModelView;
 
 /**
  * Contrôleur de test pour démontrer l'utilisation du framework
  * 
- * Ce contrôleur fournit trois endpoints :
- * 1. "/" -> page d'accueil
- * 2. "/test" -> page de test
- * 3. "/hello" -> message de salutation
- * 
- * Chaque méthode est mappée à une URL spécifique via @GetMapping
- * et retourne une chaîne qui sera affichée dans le navigateur
+ * Ce contrôleur fournit quatre endpoints :
+ * 1. "/" -> page d'accueil (texte simple)
+ * 2. "/test" -> page de test (texte simple)
+ * 3. "/hello" -> message de salutation (texte simple)
+ * 4. "/view" -> page JSP avec données
  */
 @Controller
 public class TestController {
@@ -48,5 +47,19 @@ public class TestController {
     @GetMapping("/hello")
     public String hello() {
         return "Hello World!";
+    }
+    
+    /**
+     * Exemple d'utilisation de ModelView
+     * URL : http://localhost:8080/sprint/app/view
+     * 
+     * @return ModelView avec données pour la vue test.jsp
+     */
+    @GetMapping("/view")
+    public ModelView testView() {
+        ModelView mv = new ModelView("test.jsp");
+        mv.addItem("title", "Page de test avec ModelView");
+        mv.addItem("message", "Cette page utilise une JSP avec des données !");
+        return mv;
     }
 }
