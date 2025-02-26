@@ -6,10 +6,6 @@
 
     <display-name>Sprint Framework</display-name>
 
-    <welcome-file-list>
-        <welcome-file>index.html</welcome-file>
-    </welcome-file-list>
-
     <servlet>
         <servlet-name>FrontController</servlet-name>
         <servlet-class>com.framework.servlet.FrontController</servlet-class>
