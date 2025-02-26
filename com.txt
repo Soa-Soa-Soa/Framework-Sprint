@@ -1,0 +1,4 @@
+//Reconstruire le projetmvn clean package
+
+//Déployer dans tomcat
+xcopy /Y d:\Etudes\S6\Réseau\Sprint\target\sprint-1.0-SNAPSHOT.war C:\tomcat-10\webapps\
