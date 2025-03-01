@@ -67,4 +67,35 @@ public class FrameworkException extends Exception {
             500
         );
     }
+
+    /**
+     * Paramètre requis manquant
+     */
+    public static FrameworkException missingRequiredParameter(String paramName, String methodName) {
+        return new FrameworkException(
+            "Le paramètre requis '" + paramName + "' est manquant pour la méthode '" + methodName + "'",
+            400
+        );
+    }
+
+    /**
+     * Type de paramètre non supporté
+     */
+    public static FrameworkException unsupportedParameterType(String paramName, String type) {
+        return new FrameworkException(
+            "Le type '" + type + "' n'est pas supporté pour le paramètre '" + paramName + "'",
+            500
+        );
+    }
+
+    /**
+     * Erreur de conversion de paramètre
+     */
+    public static FrameworkException parameterConversionError(String paramName, String targetType, String value) {
+        return new FrameworkException(
+            "Impossible de convertir la valeur '" + value + "' en " + targetType + 
+            " pour le paramètre '" + paramName + "'",
+            400
+        );
+    }
 }

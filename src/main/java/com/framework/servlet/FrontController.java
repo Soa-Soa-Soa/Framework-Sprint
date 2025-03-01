@@ -8,6 +8,7 @@ import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
 import com.framework.modelview.ModelView;
 import com.framework.error.FrameworkException;
+import com.framework.binding.RequestParamBinder;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.reflections.util.ClasspathHelper;
@@ -37,7 +38,6 @@ public class FrontController extends HttpServlet {
         try {
             scanControllers(packageName.trim());
             
-            // Vérifier si des contrôleurs ont été trouvés
             if (getMappings.isEmpty()) {
                 throw FrameworkException.emptyControllerPackage(packageName);
             }
@@ -67,7 +67,6 @@ public class FrontController extends HttpServlet {
             Set<Class<?>> controllers = reflections.getTypesAnnotatedWith(Controller.class);
             System.out.println("Nombre de contrôleurs trouvés : " + controllers.size());
             
-            // Vérifier si le package existe
             if (controllers.isEmpty() && ClasspathHelper.forPackage(basePackage).isEmpty()) {
                 throw FrameworkException.controllerPackageNotFound(basePackage);
             }
@@ -86,7 +85,6 @@ public class FrontController extends HttpServlet {
                             url = "/" + url;
                         }
                         
-                        // Vérifier les doublons d'URL
                         if (getMappings.containsKey(url)) {
                             String existingController = urlToControllerMap.get(url);
                             throw FrameworkException.duplicateMapping(
@@ -144,7 +142,10 @@ public class FrontController extends HttpServlet {
                 Object controllerInstance = controllerInstances.get(method.getDeclaringClass());
                 System.out.println("Méthode trouvée : " + method.getName() + " dans " + method.getDeclaringClass().getSimpleName());
                 
-                Object result = method.invoke(controllerInstance);
+                // Binding des paramètres
+                Object[] args = RequestParamBinder.bindParameters(method, request);
+                Object result = method.invoke(controllerInstance, args);
+                
                 System.out.println("Résultat de l'invocation : " + result);
                 
                 if (result == null) {
