@@ -2,6 +2,7 @@ package com.framework.controller;
 
 import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
+import com.framework.model.User;
 import com.framework.modelview.ModelView;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,15 @@ public class UserController {
     @GetMapping("/users/count")
     public String getUserCount() {
         return "Nombre d'utilisateurs : 42";
+    }
+
+    /**
+     * Test du binding d'objets
+     * URL : http://localhost:8080/sprint/app/users/register?firstName=John&lastName=Doe&age=25&email=john@example.com
+     */
+    @GetMapping("/users/register")
+    public String registerUser(User user) {
+        return "Utilisateur enregistré : " + user.toString();
     }
     
     /**

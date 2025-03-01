@@ -98,4 +98,45 @@ public class FrameworkException extends Exception {
             400
         );
     }
+
+    /**
+     * Champ requis manquant
+     */
+    public static FrameworkException missingRequiredField(String fieldName, String className) {
+        return new FrameworkException(
+            "Le champ requis '" + fieldName + "' est manquant pour la classe '" + className + "'",
+            400
+        );
+    }
+
+    /**
+     * Type de champ non supporté
+     */
+    public static FrameworkException unsupportedFieldType(String fieldName, String type) {
+        return new FrameworkException(
+            "Le type '" + type + "' n'est pas supporté pour le champ '" + fieldName + "'",
+            500
+        );
+    }
+
+    /**
+     * Erreur de conversion de champ
+     */
+    public static FrameworkException fieldConversionError(String fieldName, String targetType, String value) {
+        return new FrameworkException(
+            "Impossible de convertir la valeur '" + value + "' en " + targetType + 
+            " pour le champ '" + fieldName + "'",
+            400
+        );
+    }
+
+    /**
+     * Erreur lors du binding d'un objet
+     */
+    public static FrameworkException objectBindingError(String className, String error) {
+        return new FrameworkException(
+            "Erreur lors du binding de l'objet '" + className + "' : " + error,
+            500
+        );
+    }
 }
