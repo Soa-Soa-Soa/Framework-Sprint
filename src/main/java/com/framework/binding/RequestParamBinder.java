@@ -1,6 +1,7 @@
 package com.framework.binding;
 
 import com.framework.annotation.RequestParam;
+import com.framework.binding.ObjectBinder;
 import com.framework.error.FrameworkException;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -26,17 +27,23 @@ public class RequestParamBinder {
         
         for (int i = 0; i < parameters.length; i++) {
             Parameter param = parameters[i];
-            String paramName = getParameterName(param);
-            String paramValue = request.getParameter(paramName);
-            
             RequestParam annotation = param.getAnnotation(RequestParam.class);
-            boolean isRequired = annotation != null ? annotation.required() : true;
             
-            if (paramValue == null && isRequired) {
-                throw FrameworkException.missingRequiredParameter(paramName, method.getName());
+            if (annotation != null) {
+                // Paramètre simple avec @RequestParam
+                String paramName = getParameterName(param);
+                String paramValue = request.getParameter(paramName);
+                boolean isRequired = annotation.required();
+                
+                if (paramValue == null && isRequired) {
+                    throw FrameworkException.missingRequiredParameter(paramName, method.getName());
+                }
+                
+                args[i] = convertValue(paramValue, param.getType(), paramName);
+            } else {
+                // Objet complexe sans @RequestParam
+                args[i] = ObjectBinder.bindObject(param.getType(), request);
             }
-            
-            args[i] = convertValue(paramValue, param.getType(), paramName);
         }
         
         return args;

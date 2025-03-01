@@ -3,6 +3,7 @@ package com.framework.controller;
 import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
 import com.framework.annotation.RequestParam;
+import com.framework.model.User;
 import com.framework.modelview.ModelView;
 
 /**
@@ -15,6 +16,8 @@ import com.framework.modelview.ModelView;
  * 4. "/greet" -> message de salutation personnalisé
  * 5. "/calculate" -> calcul simple
  * 6. "/view" -> page JSP avec données
+ * 7. "/user/register" -> test du binding d'objets
+ * 8. "/user/update" -> test du binding mixte (objet + paramètres simples)
  */
 @Controller
 public class TestController {
@@ -121,5 +124,23 @@ public class TestController {
         mv.addItem("title", title != null ? title : "Page de test avec ModelView");
         mv.addItem("message", message != null ? message : "Cette page utilise une JSP avec des données !");
         return mv;
+    }
+
+    /**
+     * Test du binding d'objets
+     * URL : http://localhost:8080/sprint/app/user/register?firstName=John&lastName=Doe&age=25&email=john@example.com
+     */
+    @GetMapping("/user/register")
+    public String registerUser(User user) {
+        return "Utilisateur enregistré : " + user.toString();
+    }
+
+    /**
+     * Test du binding mixte (objet + paramètres simples)
+     * URL : http://localhost:8080/sprint/app/user/update?firstName=John&lastName=Doe&role=admin
+     */
+    @GetMapping("/user/update")
+    public String updateUser(User user, @RequestParam String role) {
+        return "Mise à jour de l'utilisateur : " + user.toString() + " avec le rôle : " + role;
     }
 }
