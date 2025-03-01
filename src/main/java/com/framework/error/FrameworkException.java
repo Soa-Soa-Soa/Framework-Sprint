@@ -139,4 +139,15 @@ public class FrameworkException extends Exception {
             500
         );
     }
+
+    /**
+     * Annotation manquante
+     */
+    public static FrameworkException missingAnnotation(String paramName, String methodName) {
+        return new FrameworkException(
+            "Le paramètre '" + paramName + "' dans la méthode '" + methodName + 
+            "' doit être annoté avec @RequestParam ou être un objet avec @RequestField",
+            400
+        );
+    }
 }
