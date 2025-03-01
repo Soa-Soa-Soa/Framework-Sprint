@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
 import com.framework.modelview.ModelView;
+import com.framework.error.FrameworkException;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.reflections.util.ClasspathHelper;
@@ -18,13 +19,10 @@ import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.*;
 
-/**
- * FrontController : Point d'entrée unique de l'application
- * Implémente le pattern Front Controller qui centralise le traitement des requêtes
- */
 public class FrontController extends HttpServlet {
     private static final Map<Class<?>, Object> controllerInstances = new HashMap<>();
     private static final Map<String, Method> getMappings = new HashMap<>();
+    private static final Map<String, String> urlToControllerMap = new HashMap<>();
 
     @Override
     public void init() throws ServletException {
@@ -36,21 +34,29 @@ public class FrontController extends HttpServlet {
             throw new ServletException("Le package des contrôleurs n'est pas spécifié dans web.xml");
         }
         
-        scanControllers(packageName.trim());
-        
-        System.out.println("\nMappings trouvés :");
-        for (Map.Entry<String, Method> entry : getMappings.entrySet()) {
-            System.out.println(entry.getKey() + " -> " + 
-                             entry.getValue().getDeclaringClass().getSimpleName() + "." + 
-                             entry.getValue().getName());
+        try {
+            scanControllers(packageName.trim());
+            
+            // Vérifier si des contrôleurs ont été trouvés
+            if (getMappings.isEmpty()) {
+                throw FrameworkException.emptyControllerPackage(packageName);
+            }
+            
+            System.out.println("\nMappings trouvés :");
+            for (Map.Entry<String, Method> entry : getMappings.entrySet()) {
+                System.out.println(entry.getKey() + " -> " + 
+                                 entry.getValue().getDeclaringClass().getSimpleName() + "." + 
+                                 entry.getValue().getName());
+            }
+        } catch (FrameworkException e) {
+            throw new ServletException(e.getMessage(), e);
         }
     }
 
-    private void scanControllers(String basePackage) {
+    private void scanControllers(String basePackage) throws FrameworkException {
         try {
             System.out.println("Début du scan du package : " + basePackage);
             
-            // Configuration avancée de Reflections
             ConfigurationBuilder config = new ConfigurationBuilder()
                 .setUrls(ClasspathHelper.forPackage(basePackage))
                 .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes)
@@ -58,19 +64,20 @@ public class FrontController extends HttpServlet {
             
             Reflections reflections = new Reflections(config);
             
-            // Trouver toutes les classes avec @Controller
             Set<Class<?>> controllers = reflections.getTypesAnnotatedWith(Controller.class);
             System.out.println("Nombre de contrôleurs trouvés : " + controllers.size());
             
-            // Pour chaque contrôleur
+            // Vérifier si le package existe
+            if (controllers.isEmpty() && ClasspathHelper.forPackage(basePackage).isEmpty()) {
+                throw FrameworkException.controllerPackageNotFound(basePackage);
+            }
+            
             for (Class<?> controller : controllers) {
                 System.out.println("Traitement du contrôleur : " + controller.getName());
                 
-                // Créer une instance (Singleton)
                 Object instance = controller.getDeclaredConstructor().newInstance();
                 controllerInstances.put(controller, instance);
                 
-                // Scanner les méthodes avec @GetMapping
                 for (Method method : controller.getDeclaredMethods()) {
                     GetMapping mapping = method.getAnnotation(GetMapping.class);
                     if (mapping != null) {
@@ -78,14 +85,32 @@ public class FrontController extends HttpServlet {
                         if (!url.startsWith("/")) {
                             url = "/" + url;
                         }
+                        
+                        // Vérifier les doublons d'URL
+                        if (getMappings.containsKey(url)) {
+                            String existingController = urlToControllerMap.get(url);
+                            throw FrameworkException.duplicateMapping(
+                                url, 
+                                existingController,
+                                controller.getSimpleName()
+                            );
+                        }
+                        
                         System.out.println("Ajout du mapping : " + url + " -> " + method.getName());
                         getMappings.put(url, method);
+                        urlToControllerMap.put(url, controller.getSimpleName());
                     }
                 }
             }
+        } catch (FrameworkException e) {
+            throw e;
         } catch (Exception e) {
             System.out.println("Erreur lors du scan des contrôleurs :");
             e.printStackTrace();
+            throw new FrameworkException(
+                "Erreur lors du scan des contrôleurs : " + e.getMessage(),
+                500
+            );
         }
     }
 
@@ -106,17 +131,28 @@ public class FrontController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String relativeUrl = getRelativeUrl(request);
-        System.out.println("Recherche de la méthode pour l'URL : " + relativeUrl);
-        
-        Method method = getMappings.get(relativeUrl);
-        if (method != null) {
+        try {
+            String relativeUrl = getRelativeUrl(request);
+            System.out.println("Recherche de la méthode pour l'URL : " + relativeUrl);
+            
+            Method method = getMappings.get(relativeUrl);
+            if (method == null) {
+                throw FrameworkException.urlNotFound(relativeUrl);
+            }
+            
             try {
                 Object controllerInstance = controllerInstances.get(method.getDeclaringClass());
                 System.out.println("Méthode trouvée : " + method.getName() + " dans " + method.getDeclaringClass().getSimpleName());
                 
                 Object result = method.invoke(controllerInstance);
                 System.out.println("Résultat de l'invocation : " + result);
+                
+                if (result == null) {
+                    throw FrameworkException.unsupportedReturnType(
+                        method.getName(),
+                        "null"
+                    );
+                }
                 
                 if (result instanceof ModelView) {
                     ModelView mv = (ModelView) result;
@@ -126,21 +162,34 @@ public class FrontController extends HttpServlet {
                     String viewPath = "/WEB-INF/views/" + mv.getUrl();
                     System.out.println("Redirection vers : " + viewPath);
                     request.getRequestDispatcher(viewPath).forward(request, response);
-                } else if (result != null) {
+                } else if (result instanceof String) {
                     response.setContentType("text/html");
                     response.setCharacterEncoding("UTF-8");
                     PrintWriter out = response.getWriter();
                     out.println(result.toString());
+                } else {
+                    throw FrameworkException.unsupportedReturnType(
+                        method.getName(),
+                        result.getClass().getSimpleName()
+                    );
                 }
+            } catch (FrameworkException e) {
+                throw e;
             } catch (Exception e) {
-                System.out.println("Erreur lors de l'exécution de la méthode :");
-                e.printStackTrace();
-                throw new ServletException("Erreur lors de l'exécution de la méthode", e);
+                throw new FrameworkException(
+                    "Erreur lors de l'exécution de la méthode : " + e.getMessage(),
+                    500
+                );
             }
-        } else {
-            System.out.println("Aucune méthode trouvée pour l'URL : " + relativeUrl);
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            response.getWriter().println("URL non trouvée : " + relativeUrl);
+        } catch (FrameworkException e) {
+            response.setStatus(e.getStatusCode());
+            response.setContentType("text/html");
+            response.setCharacterEncoding("UTF-8");
+            PrintWriter out = response.getWriter();
+            out.println("<html><body>");
+            out.println("<h1>Erreur " + e.getStatusCode() + "</h1>");
+            out.println("<p>" + e.getMessage() + "</p>");
+            out.println("</body></html>");
         }
     }
 
