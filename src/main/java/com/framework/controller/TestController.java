@@ -2,16 +2,19 @@ package com.framework.controller;
 
 import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
+import com.framework.annotation.RequestParam;
 import com.framework.modelview.ModelView;
 
 /**
  * Contrôleur de test pour démontrer l'utilisation du framework
  * 
- * Ce contrôleur fournit quatre endpoints :
+ * Ce contrôleur fournit plusieurs endpoints :
  * 1. "/" -> page d'accueil (texte simple)
  * 2. "/test" -> page de test (texte simple)
  * 3. "/hello" -> message de salutation (texte simple)
- * 4. "/view" -> page JSP avec données
+ * 4. "/greet" -> message de salutation personnalisé
+ * 5. "/calculate" -> calcul simple
+ * 6. "/view" -> page JSP avec données
  */
 @Controller
 public class TestController {
@@ -40,26 +43,83 @@ public class TestController {
     
     /**
      * Message de salutation
-     * URL : http://localhost:8080/sprint/app/hello
+     * URL : http://localhost:8080/sprint/app/hello?name=John
      * 
-     * @return Message "Hello World!"
+     * @param name Nom de la personne à saluer
+     * @return Message "Hello John!"
      */
     @GetMapping("/hello")
-    public String hello() {
-        return "Hello World!";
+    public String hello(@RequestParam String name) {
+        return "Hello " + name + "!";
+    }
+    
+    /**
+     * Message de salutation personnalisé
+     * URL : http://localhost:8080/sprint/app/greet?firstName=John&lastName=Doe
+     * 
+     * @param prenom Prénom de la personne à saluer
+     * @param nom Nom de la personne à saluer (facultatif)
+     * @return Message "Bonjour John Doe!"
+     */
+    @GetMapping("/greet")
+    public String greet(
+        @RequestParam("firstName") String prenom,
+        @RequestParam(value = "lastName", required = false) String nom
+    ) {
+        if (nom != null) {
+            return "Bonjour " + prenom + " " + nom + "!";
+        }
+        return "Bonjour " + prenom + "!";
+    }
+    
+    /**
+     * Calcul simple
+     * URL : http://localhost:8080/sprint/app/calculate?a=2&b=3&operation=add
+     * 
+     * @param a Premier nombre
+     * @param b Deuxième nombre
+     * @param operation Opération à effectuer (facultatif, par défaut : add)
+     * @return Résultat du calcul
+     */
+    @GetMapping("/calculate")
+    public String calculate(
+        @RequestParam int a,
+        @RequestParam int b,
+        @RequestParam(value = "operation", required = false) String operation
+    ) {
+        if (operation == null) operation = "add";
+        
+        switch (operation.toLowerCase()) {
+            case "add":
+                return a + " + " + b + " = " + (a + b);
+            case "subtract":
+                return a + " - " + b + " = " + (a - b);
+            case "multiply":
+                return a + " × " + b + " = " + (a * b);
+            case "divide":
+                if (b == 0) return "Division par zéro impossible";
+                return a + " ÷ " + b + " = " + (a / b);
+            default:
+                return "Opération non supportée : " + operation;
+        }
     }
     
     /**
      * Exemple d'utilisation de ModelView
-     * URL : http://localhost:8080/sprint/app/view
+     * URL : http://localhost:8080/sprint/app/view?title=Page+de+test&message=Ceci+est+un+message
      * 
+     * @param title Titre de la page (facultatif)
+     * @param message Message de la page (facultatif)
      * @return ModelView avec données pour la vue test.jsp
      */
     @GetMapping("/view")
-    public ModelView testView() {
+    public ModelView testView(
+        @RequestParam(required = false) String title,
+        @RequestParam(required = false) String message
+    ) {
         ModelView mv = new ModelView("test.jsp");
-        mv.addItem("title", "Page de test avec ModelView");
-        mv.addItem("message", "Cette page utilise une JSP avec des données !");
+        mv.addItem("title", title != null ? title : "Page de test avec ModelView");
+        mv.addItem("message", message != null ? message : "Cette page utilise une JSP avec des données !");
         return mv;
     }
 }
