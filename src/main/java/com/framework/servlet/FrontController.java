@@ -18,6 +18,7 @@ import org.reflections.util.FilterBuilder;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 public class FrontController extends HttpServlet {
@@ -174,6 +175,15 @@ public class FrontController extends HttpServlet {
                         result.getClass().getSimpleName()
                     );
                 }
+            } catch (InvocationTargetException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof FrameworkException) {
+                    throw (FrameworkException) cause;
+                }
+                throw new FrameworkException(
+                    "Erreur lors de l'exécution de la méthode : " + e.getMessage(),
+                    500
+                );
             } catch (FrameworkException e) {
                 throw e;
             } catch (Exception e) {
