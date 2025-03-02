@@ -1,5 +1,7 @@
 package com.framework.error;
 
+import com.framework.http.HttpVerb;
+
 /**
  * Exception personnalisée pour le framework
  * Permet de gérer les différentes erreurs de manière uniforme
@@ -148,6 +150,16 @@ public class FrameworkException extends Exception {
             "Le paramètre '" + paramName + "' dans la méthode '" + methodName + 
             "' doit être annoté avec @RequestParam ou être un objet avec @RequestField",
             400
+        );
+    }
+
+    /**
+     * Verbe HTTP non supporté
+     */
+    public static FrameworkException verbNotSupported(HttpVerb verb, String url) {
+        return new FrameworkException(
+            String.format("Le verbe HTTP %s n'est pas supporté pour l'URL %s", verb, url),
+            404
         );
     }
 }
