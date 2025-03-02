@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
+import com.framework.annotation.RestController;
+import com.framework.annotation.RestEndPoint;
 import com.framework.annotation.SessionInject;
 import com.framework.modelview.ModelView;
 import com.framework.error.FrameworkException;
@@ -17,6 +19,7 @@ import org.reflections.scanners.Scanners;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
+import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -32,7 +35,7 @@ import java.util.*;
  * 2. Le routage vers les contrôleurs appropriés
  * 3. L'injection des sessions
  * 4. La gestion des paramètres de requête
- * 5. Le rendu des vues
+ * 5. Le rendu des vues ou réponses JSON
  */
 public class FrontController extends HttpServlet {
     /** Map stockant les instances des contrôleurs pour éviter de les recréer à chaque requête */
@@ -43,6 +46,8 @@ public class FrontController extends HttpServlet {
     private static final Map<String, String> urlToControllerMap = new HashMap<>();
     /** Cache des champs annotés avec @SessionInject pour chaque contrôleur */
     private static final Map<Class<?>, Field> sessionFields = new HashMap<>();
+    /** Gson pour la sérialisation JSON */
+    private static final Gson gson = new Gson();
 
     /**
      * Initialisation du FrontController
@@ -80,7 +85,7 @@ public class FrontController extends HttpServlet {
 
     /**
      * Analyse les contrôleurs dans le package spécifié
-     * - Recherche les classes annotées avec @Controller
+     * - Recherche les classes annotées avec @Controller ou @RestController
      * - Crée les instances des contrôleurs
      * - Identifie les champs de session à injecter
      * - Enregistre les mappings URL des méthodes
@@ -99,7 +104,10 @@ public class FrontController extends HttpServlet {
             
             Reflections reflections = new Reflections(config);
             
-            Set<Class<?>> controllers = reflections.getTypesAnnotatedWith(Controller.class);
+            Set<Class<?>> controllers = new HashSet<>();
+            controllers.addAll(reflections.getTypesAnnotatedWith(Controller.class));
+            controllers.addAll(reflections.getTypesAnnotatedWith(RestController.class));
+            
             System.out.println("Nombre de contrôleurs trouvés : " + controllers.size());
             
             if (controllers.isEmpty() && ClasspathHelper.forPackage(basePackage).isEmpty()) {
@@ -122,9 +130,18 @@ public class FrontController extends HttpServlet {
                 }
                 
                 for (Method method : controller.getDeclaredMethods()) {
-                    GetMapping mapping = method.getAnnotation(GetMapping.class);
-                    if (mapping != null) {
-                        String url = mapping.value();
+                    String url = null;
+                    
+                    GetMapping getMapping = method.getAnnotation(GetMapping.class);
+                    RestEndPoint restEndPoint = method.getAnnotation(RestEndPoint.class);
+                    
+                    if (getMapping != null) {
+                        url = getMapping.value();
+                    } else if (restEndPoint != null) {
+                        url = restEndPoint.value();
+                    }
+                    
+                    if (url != null) {
                         if (!url.startsWith("/")) {
                             url = "/" + url;
                         }
@@ -184,7 +201,7 @@ public class FrontController extends HttpServlet {
      * 2. Injecte la session si nécessaire
      * 3. Lie les paramètres de la requête
      * 4. Exécute la méthode du contrôleur
-     * 5. Gère le résultat (ModelView ou String)
+     * 5. Gère le résultat (ModelView, String ou JSON)
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -223,7 +240,24 @@ public class FrontController extends HttpServlet {
                     );
                 }
                 
-                if (result instanceof ModelView) {
+                // Vérifie si c'est un point d'entrée REST
+                boolean isRestController = controllerClass.isAnnotationPresent(RestController.class);
+                boolean isRestEndPoint = method.isAnnotationPresent(RestEndPoint.class);
+                
+                if (isRestController || isRestEndPoint) {
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    PrintWriter out = response.getWriter();
+                    
+                    if (result instanceof ModelView) {
+                        // Si c'est un ModelView, on sérialise uniquement les données
+                        ModelView mv = (ModelView) result;
+                        out.println(gson.toJson(mv.getData()));
+                    } else {
+                        // Sinon on sérialise directement l'objet
+                        out.println(gson.toJson(result));
+                    }
+                } else if (result instanceof ModelView) {
                     ModelView mv = (ModelView) result;
                     for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
                         request.setAttribute(entry.getKey(), entry.getValue());
@@ -248,26 +282,18 @@ public class FrontController extends HttpServlet {
                     throw (FrameworkException) cause;
                 }
                 throw new FrameworkException(
-                    "Erreur lors de l'exécution de la méthode : " + e.getMessage(),
-                    500
-                );
-            } catch (FrameworkException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new FrameworkException(
-                    "Erreur lors de l'exécution de la méthode : " + e.getMessage(),
+                    "Erreur lors de l'invocation de la méthode : " + e.getMessage(),
                     500
                 );
             }
         } catch (FrameworkException e) {
-            response.setStatus(e.getStatusCode());
-            response.setContentType("text/html");
-            response.setCharacterEncoding("UTF-8");
-            PrintWriter out = response.getWriter();
-            out.println("<html><body>");
-            out.println("<h1>Erreur " + e.getStatusCode() + "</h1>");
-            out.println("<p>" + e.getMessage() + "</p>");
-            out.println("</body></html>");
+            response.sendError(e.getStatusCode(), e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendError(
+                HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                "Erreur interne du serveur : " + e.getMessage()
+            );
         }
     }
 
