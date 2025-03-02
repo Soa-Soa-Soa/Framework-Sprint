@@ -1,8 +1,13 @@
 package com.framework.binding;
 
-import com.framework.annotation.RequestParam;
+import com.framework.annotation.*;
 import com.framework.error.FrameworkException;
+import com.framework.upload.WinterPart;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
+
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
@@ -14,12 +19,18 @@ public class RequestParamBinder {
     /**
      * Prépare les arguments pour une méthode en fonction des paramètres de la requête
      */
-    public static Object[] bindParameters(Method method, HttpServletRequest request) throws FrameworkException {
+    public static Object[] bindParameters(Method method, HttpServletRequest request) throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] args = new Object[parameters.length];
         
         for (int i = 0; i < parameters.length; i++) {
             Parameter param = parameters[i];
+            
+            if (param.isAnnotationPresent(UploadParam.class)) {
+                args[i] = bindUploadParam(param, request);
+                continue;
+            }
+            
             RequestParam annotation = param.getAnnotation(RequestParam.class);
             Class<?> paramType = param.getType();
             
@@ -45,6 +56,27 @@ public class RequestParamBinder {
         }
         
         return args;
+    }
+    
+    private static WinterPart bindUploadParam(Parameter param, HttpServletRequest request) throws IOException, ServletException, FrameworkException {
+        UploadParam annotation = param.getAnnotation(UploadParam.class);
+        String paramName = annotation.value();
+        
+        // Récupère le fichier uploadé
+        Part part = request.getPart(paramName);
+        if (part == null) {
+            throw FrameworkException.missingUploadParam(paramName);
+        }
+        
+        // Crée le répertoire d'upload s'il n'existe pas
+        String uploadDir = request.getServletContext().getRealPath("") + "/uploads";
+        
+        // Crée et configure l'objet WinterPart
+        WinterPart winterPart = new WinterPart();
+        winterPart.setPart(part);
+        winterPart.setUploadDirectory(uploadDir);
+        
+        return winterPart;
     }
     
     /**
