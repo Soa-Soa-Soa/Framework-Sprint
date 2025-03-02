@@ -76,7 +76,7 @@ public class ObjectBinder {
     /**
      * Convertit une valeur String en type cible
      */
-    private static Object convertValue(String value, Class<?> targetType, String fieldName) throws FrameworkException {
+    static Object convertValue(String value, Class<?> targetType, String fieldName) throws FrameworkException {
         if (value == null) return null;
         
         try {
