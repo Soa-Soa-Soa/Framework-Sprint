@@ -52,7 +52,7 @@ public class TestController {
      * @return Message "Hello John!"
      */
     @GetMapping("/hello")
-    public String hello(@RequestParam String name) {
+    public String hello(@RequestParam(name = "name") String name) {
         return "Hello " + name + "!";
     }
     
@@ -66,8 +66,8 @@ public class TestController {
      */
     @GetMapping("/greet")
     public String greet(
-        @RequestParam("firstName") String prenom,
-        @RequestParam(value = "lastName", required = false) String nom
+        @RequestParam(name = "firstName") String prenom,
+        @RequestParam(value = "lastName", required = false, name = "lastName") String nom
     ) {
         if (nom != null) {
             return "Bonjour " + prenom + " " + nom + "!";
@@ -86,9 +86,9 @@ public class TestController {
      */
     @GetMapping("/calculate")
     public String calculate(
-        @RequestParam int a,
-        @RequestParam int b,
-        @RequestParam(value = "operation", required = false) String operation
+        @RequestParam(name = "a") int a,
+        @RequestParam(name = "b") int b,
+        @RequestParam(value = "operation", required = false, name = "operation") String operation
     ) {
         if (operation == null) operation = "add";
         
@@ -117,8 +117,8 @@ public class TestController {
      */
     @GetMapping("/view")
     public ModelView testView(
-        @RequestParam(required = false) String title,
-        @RequestParam(required = false) String message
+        @RequestParam(required = false, name = "title") String title,
+        @RequestParam(required = false, name = "message") String message
     ) {
         ModelView mv = new ModelView("test.jsp");
         mv.addItem("title", title != null ? title : "Page de test avec ModelView");
@@ -140,7 +140,7 @@ public class TestController {
      * URL : http://localhost:8080/sprint/app/user/update?firstName=John&lastName=Doe&role=admin
      */
     @GetMapping("/user/update")
-    public String updateUser(User user, @RequestParam String role) {
+    public String updateUser(User user, @RequestParam(name = "role") String role) {
         return "Mise à jour de l'utilisateur : " + user.toString() + " avec le rôle : " + role;
     }
 }

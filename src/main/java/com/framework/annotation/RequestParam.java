@@ -22,4 +22,6 @@ public @interface RequestParam {
      * Indique si le paramètre est obligatoire
      */
     boolean required() default true;
+
+    String name();
 }
