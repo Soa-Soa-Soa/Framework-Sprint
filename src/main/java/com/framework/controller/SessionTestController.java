@@ -19,8 +19,8 @@ public class SessionTestController {
      */
     @GetMapping("/session/set")
     public String setSessionAttribute(
-        @RequestParam String name,
-        @RequestParam String value
+        @RequestParam(name = "name") String name,
+        @RequestParam(name = "value") String value
     ) {
         session.setAttribute(name, value);
         return "Attribut '" + name + "' défini avec la valeur '" + value + "'";
@@ -31,7 +31,7 @@ public class SessionTestController {
      * URL: http://localhost:8080/sprint/app/session/get?name=John
      */
     @GetMapping("/session/get")
-    public String getSessionAttribute(@RequestParam String name) {
+    public String getSessionAttribute(@RequestParam(name = "name") String name) {
         Object value = session.getAttribute(name);
         if (value == null) {
             return "Aucun attribut trouvé pour '" + name + "'";
@@ -56,7 +56,7 @@ public class SessionTestController {
      * URL: http://localhost:8080/sprint/app/session/remove?name=John
      */
     @GetMapping("/session/remove")
-    public String removeSessionAttribute(@RequestParam String name) {
+    public String removeSessionAttribute(@RequestParam(name = "name") String name) {
         session.removeAttribute(name);
         return "Attribut '" + name + "' supprimé";
     }

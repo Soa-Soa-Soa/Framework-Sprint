@@ -31,7 +31,7 @@ public class Sprint7BisTestController {
      * Test URL: http://localhost:8080/sprint/app/sprint7bis/test3?firstName=John&lastName=Doe&role=admin
      */
     @GetMapping("/sprint7bis/test3")
-    public String test3(User user, @RequestParam String role) {
+    public String test3(User user, @RequestParam(name = "role") String role) {
         return "User: " + user + ", Role: " + role;
     }
     
@@ -40,7 +40,7 @@ public class Sprint7BisTestController {
      * Test URL: http://localhost:8080/sprint/app/sprint7bis/test4?name=John&age=25
      */
     @GetMapping("/sprint7bis/test4")
-    public String test4(@RequestParam String name, @RequestParam int age) {
+    public String test4(@RequestParam(name = "name") String name, @RequestParam(name = "age") int age) {
         return "Name: " + name + ", Age: " + age;
     }
     
@@ -49,7 +49,7 @@ public class Sprint7BisTestController {
      * Test URL: http://localhost:8080/sprint/app/sprint7bis/test5?name=John&isAdmin=true
      */
     @GetMapping("/sprint7bis/test5")
-    public String test5(@RequestParam String name, boolean isAdmin) {
+    public String test5(@RequestParam(name = "name") String name, @RequestParam(name = "isAdmin") boolean isAdmin) {
         return "Name: " + name + ", Is Admin: " + isAdmin;
     }
 }
