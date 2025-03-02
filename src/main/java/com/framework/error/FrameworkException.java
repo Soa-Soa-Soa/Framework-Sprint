@@ -162,4 +162,14 @@ public class FrameworkException extends Exception {
             404
         );
     }
+
+    /**
+     * Paramètre d'upload manquant
+     */
+    public static FrameworkException missingUploadParam(String paramName) {
+        return new FrameworkException(
+            String.format("Le fichier '%s' est requis mais n'a pas été fourni", paramName),
+            400
+        );
+    }
 }

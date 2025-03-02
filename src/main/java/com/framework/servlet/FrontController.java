@@ -18,6 +18,7 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 import com.google.gson.Gson;
+import jakarta.servlet.annotation.MultipartConfig;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -29,6 +30,11 @@ import java.util.*;
 /**
  * FrontController - Contrôleur principal du framework
  */
+@MultipartConfig(
+    fileSizeThreshold = 1024 * 1024,      // 1 MB
+    maxFileSize = 1024 * 1024 * 10,       // 10 MB
+    maxRequestSize = 1024 * 1024 * 100     // 100 MB
+)
 public class FrontController extends HttpServlet {
     private static final Map<String, Mapping> urlMappings = new HashMap<>();
     private static final Map<Class<?>, Object> controllerInstances = new HashMap<>();
