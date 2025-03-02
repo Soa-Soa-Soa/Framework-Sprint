@@ -4,6 +4,7 @@ import com.framework.annotation.*;
 import com.framework.error.FrameworkException;
 import com.framework.upload.WinterPart;
 import com.framework.validation.ParameterValidator;
+import com.framework.validation.ValidationErrors;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
@@ -30,11 +31,14 @@ public class RequestParamBinder {
      * @param method Méthode de contrôleur à invoquer
      * @param request Requête HTTP contenant les paramètres
      * @return Tableau d'arguments à passer à la méthode
-     * @throws Exception Si une erreur survient pendant le binding ou la validation
-     */
-    public static Object[] bindParameters(Method method, HttpServletRequest request) throws Exception {
+          * @throws ServletException 
+          * @throws IOException 
+          * @throws Exception Si une erreur survient pendant le binding ou la validation
+          */
+         public static Object[] bindParameters(Method method, HttpServletRequest request) throws FrameworkException, IOException, ServletException {
         Parameter[] parameters = method.getParameters();
         Object[] args = new Object[parameters.length];
+        ValidationErrors allErrors = new ValidationErrors();
         
         for (int i = 0; i < parameters.length; i++) {
             Parameter param = parameters[i];
@@ -57,8 +61,15 @@ public class RequestParamBinder {
             }
             
             // Validation du paramètre
-            ParameterValidator.validate(param, value);
+            ValidationErrors paramErrors = ParameterValidator.validate(param, value);
+            allErrors.merge(paramErrors);
+            
             args[i] = value;
+        }
+        
+        // Si des erreurs ont été trouvées, on les lance
+        if (allErrors.hasErrors()) {
+            throw new FrameworkException("Erreurs de validation", allErrors);
         }
         
         return args;

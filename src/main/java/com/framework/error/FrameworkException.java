@@ -1,6 +1,7 @@
 package com.framework.error;
 
 import com.framework.http.HttpVerb;
+import com.framework.validation.ValidationErrors;
 
 /**
  * Exception personnalisée pour le framework
@@ -8,14 +9,36 @@ import com.framework.http.HttpVerb;
  */
 public class FrameworkException extends Exception {
     private final int statusCode;
+    private String fieldName;
+    private ValidationErrors validationErrors;
     
     public FrameworkException(String message, int statusCode) {
         super(message);
         this.statusCode = statusCode;
     }
     
+    public FrameworkException(String message, String fieldName, int statusCode) {
+        super(message);
+        this.statusCode = statusCode;
+        this.fieldName = fieldName;
+    }
+    
+    public FrameworkException(String message, ValidationErrors validationErrors) {
+        super(message);
+        this.statusCode = 400;
+        this.validationErrors = validationErrors;
+    }
+    
     public int getStatusCode() {
         return statusCode;
+    }
+    
+    public String getFieldName() {
+        return fieldName;
+    }
+    
+    public ValidationErrors getValidationErrors() {
+        return validationErrors;
     }
     
     /**
@@ -76,6 +99,7 @@ public class FrameworkException extends Exception {
     public static FrameworkException missingRequiredParameter(String paramName, String methodName) {
         return new FrameworkException(
             "Le paramètre requis '" + paramName + "' est manquant pour la méthode '" + methodName + "'",
+            paramName,
             400
         );
     }
@@ -86,6 +110,7 @@ public class FrameworkException extends Exception {
     public static FrameworkException unsupportedParameterType(String paramName, String type) {
         return new FrameworkException(
             "Le type '" + type + "' n'est pas supporté pour le paramètre '" + paramName + "'",
+            paramName,
             500
         );
     }
@@ -97,6 +122,7 @@ public class FrameworkException extends Exception {
         return new FrameworkException(
             "Impossible de convertir la valeur '" + value + "' en " + targetType + 
             " pour le paramètre '" + paramName + "'",
+            paramName,
             400
         );
     }
@@ -107,6 +133,7 @@ public class FrameworkException extends Exception {
     public static FrameworkException missingRequiredField(String fieldName, String className) {
         return new FrameworkException(
             "Le champ requis '" + fieldName + "' est manquant pour la classe '" + className + "'",
+            fieldName,
             400
         );
     }
@@ -117,6 +144,7 @@ public class FrameworkException extends Exception {
     public static FrameworkException unsupportedFieldType(String fieldName, String type) {
         return new FrameworkException(
             "Le type '" + type + "' n'est pas supporté pour le champ '" + fieldName + "'",
+            fieldName,
             500
         );
     }
@@ -128,6 +156,7 @@ public class FrameworkException extends Exception {
         return new FrameworkException(
             "Impossible de convertir la valeur '" + value + "' en " + targetType + 
             " pour le champ '" + fieldName + "'",
+            fieldName,
             400
         );
     }
@@ -149,6 +178,7 @@ public class FrameworkException extends Exception {
         return new FrameworkException(
             "Le paramètre '" + paramName + "' dans la méthode '" + methodName + 
             "' doit être annoté avec @RequestParam ou être un objet avec @RequestField",
+            paramName,
             400
         );
     }
@@ -168,8 +198,13 @@ public class FrameworkException extends Exception {
      */
     public static FrameworkException missingUploadParam(String paramName) {
         return new FrameworkException(
-            String.format("Le fichier '%s' est requis mais n'a pas été fourni", paramName),
+            "Le fichier '" + paramName + "' est requis mais n'a pas été fourni",
+            paramName,
             400
         );
+    }
+    
+    public static FrameworkException parameterValidationError(String fieldName, String message) {
+        return new FrameworkException(message, fieldName, 400);
     }
 }

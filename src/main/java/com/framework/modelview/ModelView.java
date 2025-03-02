@@ -1,6 +1,7 @@
 package com.framework.modelview;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Classe ModelView qui gère la vue et les données à afficher
@@ -24,33 +25,23 @@ public class ModelView {
      * URL de la vue (page JSP) à afficher
      * Exemple : "users.jsp", "home.jsp"
      */
-    private String url;
+    private final String view;
     
     /**
      * Map contenant les données à passer à la vue
      * Clé : nom de l'attribut dans la JSP
      * Valeur : objet à passer (peut être de n'importe quel type)
      */
-    private HashMap<String, Object> data;
+    private final Map<String, Object> model;
     
     /**
      * Constructeur qui initialise le ModelView avec l'URL de la vue
      * 
-     * @param url URL de la vue à afficher
+     * @param view URL de la vue à afficher
      */
-    public ModelView(String url) {
-        this.url = url;
-        this.data = new HashMap<>();
-    }
-    
-    /**
-     * Ajoute une donnée à passer à la vue
-     * 
-     * @param name Nom de l'attribut dans la JSP
-     * @param value Valeur de l'attribut
-     */
-    public void addItem(String name, Object value) {
-        this.data.put(name, value);
+    public ModelView(String view) {
+        this.view = view;
+        this.model = new HashMap<>();
     }
     
     /**
@@ -58,17 +49,8 @@ public class ModelView {
      * 
      * @return URL de la vue
      */
-    public String getUrl() {
-        return url;
-    }
-    
-    /**
-     * Modifie l'URL de la vue
-     * 
-     * @param url Nouvelle URL de la vue
-     */
-    public void setUrl(String url) {
-        this.url = url;
+    public String getView() {
+        return view;
     }
     
     /**
@@ -76,16 +58,17 @@ public class ModelView {
      * 
      * @return Map des données
      */
-    public HashMap<String, Object> getData() {
-        return data;
+    public Map<String, Object> getModel() {
+        return model;
     }
     
     /**
-     * Modifie les données à passer à la vue
+     * Ajoute une donnée à passer à la vue
      * 
-     * @param data Nouvelles données
+     * @param key Nom de l'attribut dans la JSP
+     * @param value Valeur de l'attribut
      */
-    public void setData(HashMap<String, Object> data) {
-        this.data = data;
+    public void addItem(String key, Object value) {
+        this.model.put(key, value);
     }
 }
