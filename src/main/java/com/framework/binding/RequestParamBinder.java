@@ -3,6 +3,7 @@ package com.framework.binding;
 import com.framework.annotation.*;
 import com.framework.error.FrameworkException;
 import com.framework.upload.WinterPart;
+import com.framework.validation.ParameterValidator;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
@@ -12,12 +13,24 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 /**
- * Classe utilitaire pour lier les paramètres de requête aux paramètres de méthode
+ * Classe utilitaire pour le binding des paramètres de requête HTTP
+ * vers les paramètres des méthodes de contrôleur
  */
 public class RequestParamBinder {
     
     /**
-     * Prépare les arguments pour une méthode en fonction des paramètres de la requête
+     * Prépare les arguments pour une méthode de contrôleur en fonction des paramètres de la requête
+     * 
+     * Supporte :
+     * - Les paramètres simples avec @RequestParam
+     * - Les fichiers uploadés avec @UploadParam
+     * - Les objets complexes avec binding automatique
+     * - La validation des paramètres (@Required, @NotBlank, @Range)
+     * 
+     * @param method Méthode de contrôleur à invoquer
+     * @param request Requête HTTP contenant les paramètres
+     * @return Tableau d'arguments à passer à la méthode
+     * @throws Exception Si une erreur survient pendant le binding ou la validation
      */
     public static Object[] bindParameters(Method method, HttpServletRequest request) throws Exception {
         Parameter[] parameters = method.getParameters();
@@ -25,40 +38,44 @@ public class RequestParamBinder {
         
         for (int i = 0; i < parameters.length; i++) {
             Parameter param = parameters[i];
+            Object value = null;
             
             if (param.isAnnotationPresent(UploadParam.class)) {
-                args[i] = bindUploadParam(param, request);
-                continue;
-            }
-            
-            RequestParam annotation = param.getAnnotation(RequestParam.class);
-            Class<?> paramType = param.getType();
-            
-            // Si c'est un type primitif ou String, il doit avoir @RequestParam
-            if (isPrimitiveOrString(paramType)) {
-                if (annotation == null) {
-                    throw FrameworkException.missingAnnotation(param.getName(), method.getName());
-                }
-                // Paramètre simple avec @RequestParam
-                String paramName = getParameterName(param);
-                String paramValue = request.getParameter(paramName);
-                boolean isRequired = annotation.required();
-                
-                if (paramValue == null && isRequired) {
-                    throw FrameworkException.missingRequiredParameter(paramName, method.getName());
-                }
-                
-                args[i] = convertValue(paramValue, paramType, paramName);
+                value = bindUploadParam(param, request);
             } else {
-                // Objet complexe
-                args[i] = ObjectBinder.bindObject(paramType, request);
+                RequestParam annotation = param.getAnnotation(RequestParam.class);
+                Class<?> paramType = param.getType();
+                
+                // Si le paramètre n'a pas d'annotation, on utilise son nom
+                String paramName = getParamName(param, annotation);
+                String paramValue = request.getParameter(paramName);
+                
+                // Conversion de la valeur si présente
+                if (paramValue != null) {
+                    value = ObjectBinder.convertValue(paramValue, paramType, paramName);
+                }
             }
+            
+            // Validation du paramètre
+            ParameterValidator.validate(param, value);
+            args[i] = value;
         }
         
         return args;
     }
     
-    private static WinterPart bindUploadParam(Parameter param, HttpServletRequest request) throws IOException, ServletException, FrameworkException {
+    /**
+     * Gère le binding d'un fichier uploadé vers un objet WinterPart
+     * 
+     * @param param Paramètre de la méthode annoté avec @UploadParam
+     * @param request Requête HTTP contenant le fichier
+     * @return Instance de WinterPart configurée avec le fichier
+     * @throws IOException En cas d'erreur d'accès au fichier
+     * @throws ServletException En cas d'erreur lors de la récupération du Part
+     * @throws FrameworkException Si le fichier est requis mais absent
+     */
+    private static WinterPart bindUploadParam(Parameter param, HttpServletRequest request) 
+            throws IOException, ServletException, FrameworkException {
         UploadParam annotation = param.getAnnotation(UploadParam.class);
         String paramName = annotation.value();
         
@@ -80,49 +97,16 @@ public class RequestParamBinder {
     }
     
     /**
-     * Obtient le nom du paramètre, soit depuis l'annotation @RequestParam, soit depuis le nom du paramètre
+     * Obtient le nom du paramètre à partir de l'annotation ou du nom du paramètre
+     * 
+     * @param param Paramètre de la méthode
+     * @param annotation Annotation @RequestParam si présente
+     * @return Nom du paramètre à utiliser pour le binding
      */
-    private static String getParameterName(Parameter param) {
-        RequestParam annotation = param.getAnnotation(RequestParam.class);
+    private static String getParamName(Parameter param, RequestParam annotation) {
         if (annotation != null && !annotation.value().isEmpty()) {
             return annotation.value();
         }
         return param.getName();
-    }
-    
-    /**
-     * Vérifie si le type est un primitif, String, Number ou Boolean
-     */
-    private static boolean isPrimitiveOrString(Class<?> type) {
-        return type.isPrimitive() || 
-               type == String.class || 
-               Number.class.isAssignableFrom(type) || 
-               type == Boolean.class;
-    }
-    
-    /**
-     * Convertit une valeur String en type cible
-     */
-    private static Object convertValue(String value, Class<?> targetType, String paramName) throws FrameworkException {
-        if (value == null) return null;
-        
-        try {
-            if (targetType == String.class) {
-                return value;
-            } else if (targetType == int.class || targetType == Integer.class) {
-                return Integer.parseInt(value);
-            } else if (targetType == long.class || targetType == Long.class) {
-                return Long.parseLong(value);
-            } else if (targetType == double.class || targetType == Double.class) {
-                return Double.parseDouble(value);
-            } else if (targetType == boolean.class || targetType == Boolean.class) {
-                return Boolean.parseBoolean(value);
-            } else if (targetType == float.class || targetType == Float.class) {
-                return Float.parseFloat(value);
-            }
-            throw FrameworkException.unsupportedParameterType(paramName, targetType.getSimpleName());
-        } catch (NumberFormatException e) {
-            throw FrameworkException.parameterConversionError(paramName, targetType.getSimpleName(), value);
-        }
     }
 }
