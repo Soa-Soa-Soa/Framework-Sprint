@@ -1,55 +1,77 @@
 package com.framework.validation;
 
-import com.framework.error.FrameworkException;
+import com.framework.annotation.RequestParam;
 import java.lang.reflect.Parameter;
 
 /**
- * Validateur de paramètres de requête
- * Vérifie que les paramètres respectent les contraintes définies par les annotations
+ * Valide les paramètres selon leurs annotations
  */
 public class ParameterValidator {
     
     /**
      * Valide un paramètre selon ses annotations
-     * 
-     * @param param Paramètre à valider
-     * @param value Valeur du paramètre
-     * @throws FrameworkException Si la validation échoue
      */
-    public static void validate(Parameter param, Object value) throws FrameworkException {
-        // Validation @Required
-        if (param.isAnnotationPresent(Required.class)) {
-            Required required = param.getAnnotation(Required.class);
-            if (value == null) {
-                throw new FrameworkException(required.message(), 400);
-            }
+    public static ValidationErrors validate(Parameter param, Object value) {
+        ValidationErrors errors = new ValidationErrors();
+        String paramName = getParamName(param);
+        
+        // Stocke la valeur soumise
+        if (value != null) {
+            errors.addValue(paramName, value.toString());
         }
         
-        // Si la valeur est null et pas @Required, on skip les autres validations
+        // Validation @Required
+        Required required = param.getAnnotation(Required.class);
+        if (required != null && value == null) {
+            errors.addError(paramName, required.message());
+        }
+        
+        // Si la valeur est null et qu'elle n'est pas requise, on s'arrête là
         if (value == null) {
-            return;
+            return errors;
         }
         
         // Validation @NotBlank pour les String
-        if (param.isAnnotationPresent(NotBlank.class) && value instanceof String) {
+        if (value instanceof String) {
             NotBlank notBlank = param.getAnnotation(NotBlank.class);
-            String strValue = (String) value;
-            if (strValue.trim().isEmpty()) {
-                throw new FrameworkException(notBlank.message(), 400);
+            if (notBlank != null && ((String) value).trim().isEmpty()) {
+                errors.addError(paramName, notBlank.message());
             }
         }
         
         // Validation @Range pour les nombres
-        if (param.isAnnotationPresent(Range.class) && value instanceof Number) {
-            Range range = param.getAnnotation(Range.class);
-            long numValue = ((Number) value).longValue();
-            
-            if (numValue < range.min() || numValue > range.max()) {
-                String message = range.message()
-                    .replace("{min}", String.valueOf(range.min()))
-                    .replace("{max}", String.valueOf(range.max()));
-                throw new FrameworkException(message, 400);
+        Range range = param.getAnnotation(Range.class);
+        if (range != null) {
+            if (value instanceof Integer) {
+                int intValue = (Integer) value;
+                if (intValue < range.min() || intValue > range.max()) {
+                    String message = range.message()
+                        .replace("{min}", String.valueOf(range.min()))
+                        .replace("{max}", String.valueOf(range.max()));
+                    errors.addError(paramName, message);
+                }
+            } else if (value instanceof Double) {
+                double doubleValue = (Double) value;
+                if (doubleValue < range.min() || doubleValue > range.max()) {
+                    String message = range.message()
+                        .replace("{min}", String.valueOf(range.min()))
+                        .replace("{max}", String.valueOf(range.max()));
+                    errors.addError(paramName, message);
+                }
             }
         }
+        
+        return errors;
+    }
+    
+    /**
+     * Récupère le nom du paramètre depuis l'annotation @RequestParam ou le nom du paramètre
+     */
+    private static String getParamName(Parameter param) {
+        RequestParam requestParam = param.getAnnotation(RequestParam.class);
+        if (requestParam != null && !requestParam.name().isEmpty()) {
+            return requestParam.name();
+        }
+        return param.getName();
     }
 }
