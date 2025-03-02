@@ -166,8 +166,12 @@ public class FrontController extends HttpServlet {
             String relativeUrl = getRelativeUrl(request);
             Mapping mapping = urlMappings.get(relativeUrl);
             
-            if (mapping == null || !mapping.supportsVerb(verb)) {
+            if (mapping == null) {
                 throw FrameworkException.urlNotFound(relativeUrl);
+            }
+            
+            if (!mapping.supportsVerb(verb)) {
+                throw FrameworkException.verbNotSupported(verb, relativeUrl);
             }
 
             Method method = mapping.getMethod(verb);
@@ -187,7 +191,7 @@ public class FrontController extends HttpServlet {
 
             handleResult(result, request, response, controllerClass, method);
         } catch (Exception e) {
-            handleException(e, response);
+            handleException(e, request, response);
         }
     }
 
@@ -238,18 +242,22 @@ public class FrontController extends HttpServlet {
         out.println(content);
     }
 
-    private void handleException(Exception e, HttpServletResponse response) throws IOException {
+    private void handleException(Exception e, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         if (e instanceof InvocationTargetException) {
             e = (Exception) e.getCause();
         }
-        
+
         if (e instanceof FrameworkException) {
             FrameworkException fe = (FrameworkException) e;
+            if (fe.getStatusCode() == 404) {
+                // Pour les erreurs 404, on affiche notre page personnalisée
+                request.setAttribute("errorMessage", fe.getMessage());
+                request.getRequestDispatcher("/WEB-INF/views/error-404.jsp").forward(request, response);
+                return;
+            }
             response.sendError(fe.getStatusCode(), fe.getMessage());
         } else {
-            e.printStackTrace();
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, 
-                             "Erreur interne du serveur : " + e.getMessage());
+            response.sendError(500, "Erreur interne du serveur: " + e.getMessage());
         }
     }
 
