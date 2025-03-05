@@ -1,6 +1,7 @@
 package com.framework.servlet;
 
 import com.framework.annotation.*;
+import com.framework.auth.AuthenticationManager;
 import com.framework.binding.RequestParamBinder;
 import com.framework.error.FrameworkException;
 import com.framework.http.HttpVerb;
@@ -188,6 +189,19 @@ public class FrontController extends HttpServlet {
 
             Method method = mapping.getMethod(verb);
             Class<?> controllerClass = mapping.getControllerClass(verb);
+            
+            // Vérification de l'authentification
+            if (requiresAuthentication(method, controllerClass)) {
+                Session session = SessionManager.getSession(req, resp, false);
+                if (!checkAuthentication(method, controllerClass, session)) {
+                    String redirectTo = method.isAnnotationPresent(Authenticated.class) 
+                        ? method.getAnnotation(Authenticated.class).redirectTo()
+                        : controllerClass.getAnnotation(Authenticated.class).redirectTo();
+                    resp.sendRedirect(req.getContextPath() + "/app" + redirectTo);
+                    return;
+                }
+            }
+
             Object controllerInstance = controllerInstances.get(controllerClass);
 
             // Injection de la session si nécessaire
@@ -199,7 +213,6 @@ public class FrontController extends HttpServlet {
 
             // Binding des paramètres avec validation
             Object[] args = null;
-            ValidationErrors validationErrors = new ValidationErrors();
             
             try {
                 args = RequestParamBinder.bindParameters(method, req);
@@ -217,6 +230,32 @@ public class FrontController extends HttpServlet {
         } catch (Exception e) {
             handleError(req, resp, e);
         }
+    }
+
+    /**
+     * Vérifie si une méthode ou sa classe nécessite une authentification
+     */
+    private boolean requiresAuthentication(Method method, Class<?> controllerClass) {
+        Authenticated methodAuth = method.getAnnotation(Authenticated.class);
+        Authenticated classAuth = controllerClass.getAnnotation(Authenticated.class);
+        return methodAuth != null || classAuth != null;
+    }
+
+    /**
+     * Récupère l'URL de redirection pour l'authentification
+     */
+    private boolean checkAuthentication(Method method, Class<?> controllerClass, Session session) {
+        Authenticated methodAuth = method.getAnnotation(Authenticated.class);
+        if (methodAuth != null) {
+            return AuthenticationManager.hasRole(session, methodAuth.value());
+        }
+        
+        Authenticated classAuth = controllerClass.getAnnotation(Authenticated.class);
+        if (classAuth != null) {
+            return AuthenticationManager.hasRole(session, classAuth.value());
+        }
+        
+        return true;
     }
 
     private void handleResult(Object result, HttpServletRequest req, HttpServletResponse resp, 
