@@ -236,20 +236,36 @@ public class FrontController extends HttpServlet {
      * Vérifie si une méthode ou sa classe nécessite une authentification
      */
     private boolean requiresAuthentication(Method method, Class<?> controllerClass) {
-        Authenticated methodAuth = method.getAnnotation(Authenticated.class);
-        Authenticated classAuth = controllerClass.getAnnotation(Authenticated.class);
-        return methodAuth != null || classAuth != null;
+        // Si la méthode est marquée @Public, pas besoin d'authentification
+        if (method.isAnnotationPresent(Public.class)) {
+            return false;
+        }
+        
+        // Si la méthode a @Authenticated, vérifie le rôle
+        if (method.isAnnotationPresent(Authenticated.class)) {
+            return true;
+        }
+        
+        // Si la classe a @Authenticated, vérifie le rôle sauf si la méthode est @Public
+        return controllerClass.isAnnotationPresent(Authenticated.class);
     }
 
     /**
      * Récupère l'URL de redirection pour l'authentification
      */
     private boolean checkAuthentication(Method method, Class<?> controllerClass, Session session) {
+        // Si la méthode est @Public, pas besoin de vérifier
+        if (method.isAnnotationPresent(Public.class)) {
+            return true;
+        }
+        
+        // Vérifie d'abord l'annotation de la méthode
         Authenticated methodAuth = method.getAnnotation(Authenticated.class);
         if (methodAuth != null) {
             return AuthenticationManager.hasRole(session, methodAuth.value());
         }
         
+        // Sinon vérifie l'annotation de la classe
         Authenticated classAuth = controllerClass.getAnnotation(Authenticated.class);
         if (classAuth != null) {
             return AuthenticationManager.hasRole(session, classAuth.value());

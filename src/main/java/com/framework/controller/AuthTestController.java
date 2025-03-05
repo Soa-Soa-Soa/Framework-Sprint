@@ -36,10 +36,10 @@ public class AuthTestController {
     ) {
         if (username.equals("admin") && password.equals("admin123")) {
             AuthenticationManager.authenticate(session, username, "admin");
-            return new ModelView("auth/dashboard.jsp");
+            return new ModelView("secured/admin.jsp");
         } else if (username.equals("user") && password.equals("user123")) {
             AuthenticationManager.authenticate(session, username, "user");
-            return new ModelView("auth/profile.jsp");
+            return new ModelView("secured/profile.jsp");
         }
         
         ModelView mv = new ModelView("auth/login.jsp");
